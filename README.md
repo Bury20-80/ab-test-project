@@ -90,7 +90,6 @@ ab_test_project/
 │   ├── effect_estimate.png
 │   ├── exposure_conversion_association.png
 │   └── power_curve.png
-├── INTERVIEW_GUIDE_PL.md
 ├── README.md
 └── requirements.txt
 ```
