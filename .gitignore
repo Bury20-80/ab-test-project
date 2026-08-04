@@ -1,0 +1,18 @@
+# Private notes
+notes.md
+
+# Local Python environment
+.venv/
+venv/
+
+# Jupyter temporary files
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
