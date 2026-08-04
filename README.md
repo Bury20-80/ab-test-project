@@ -1,75 +1,107 @@
-# Marketing A/B Test: Experiment Design and Conversion Analysis
+# Marketing A/B Test Analysis
 
-A recruiter-ready analytics project that combines **SQL data validation**, **Python statistical analysis**, **experiment design**, **Monte Carlo simulation**, and **business interpretation**.
+I analyzed a marketing A/B test to check whether showing an advertisement (`ad`) increased conversion compared with showing a public-service announcement (`psa`). I performed the data-quality checks in SQLite and the statistical analysis in Python. I also used power analysis and Monte Carlo simulation to examine how a future experiment could be designed.
 
-## Business question
+## Project goal
 
-Does showing an advertisement (`ad`) increase conversion compared with showing a public-service announcement (`psa`)? If so, is the uplift large enough to justify rollout?
+The main question was:
 
-## Executive summary
+> Does the advertisement improve conversion, and is the observed uplift large enough to support a rollout decision?
 
-The dataset contains **588,101 unique users** and no missing values in the required fields. The experiment groups are highly imbalanced: 564,577 users received the advertisement and 23,524 received the PSA.
+The dataset does not include advertising costs, revenue, dates, or experiment-assignment logs. For that reason, the final recommendation is conditional rather than a simple ship/no-ship decision.
+
+## Key results
+
+The dataset contains **588,101 unique users**. I found no duplicate user IDs or missing values in the required columns.
 
 | Metric | Result |
 |---|---:|
+| Users in the ad group | 564,577 |
+| Users in the PSA group | 23,524 |
 | Ad conversion rate | 2.55% |
 | PSA conversion rate | 1.79% |
 | Absolute uplift | **+0.77 percentage points** |
 | Relative uplift | **+43.1%** |
 | 95% CI for absolute uplift | **+0.59 to +0.94 pp** |
 | Two-sided z-test p-value | **1.71 × 10⁻¹³** |
-| Scenario planning threshold | 0.50 pp |
-| 80% detectable uplift at observed allocation | ~0.26 pp |
+| Scenario MDE | 0.50 pp |
+| 80% detectable uplift with the observed allocation | ~0.26 pp |
 
-The observed uplift is statistically convincing and exceeds the selected 0.50 percentage-point planning threshold. However, the correct business recommendation is a **conditional rollout**, not an unconditional “ship”: the dataset does not contain assignment metadata, dates, revenue, margin, advertising cost, or guardrail metrics.
+The ad group had a higher conversion rate than the PSA group. The confidence interval does not include zero, and the observed uplift is larger than the 0.50 percentage-point threshold used in the experiment-design scenario.
 
 ![Conversion rates](visuals/conversion_rates.png)
 
 ![Effect estimate](visuals/effect_estimate.png)
 
-## Decision
+## Conclusion
 
-**Recommendation: proceed toward rollout only after validating experiment integrity and unit economics.**
+Based on the available data, I would continue toward rollout, but only after checking the experiment setup and unit economics.
 
-The data support `ad` over `psa` under the assumption that assignment was randomized and measurement was reliable. Before a production decision, I would verify:
+The statistical result supports the ad variant under the assumption that users were assigned correctly and conversion tracking was consistent between groups. Before making a production decision, I would still verify:
 
-1. randomization and exposure logic from experiment logs;
-2. the value of an incremental conversion versus incremental ad cost;
-3. downstream guardrails and conversion quality;
-4. stability over time and across important user segments.
+1. the randomization and exposure logic in the experiment logs;
+2. the value of an incremental conversion compared with the additional advertising cost;
+3. conversion quality and downstream guardrail metrics;
+4. whether the effect is stable over time and across important user segments.
 
-## Why this project is analytically credible
+## What I did
 
-- The primary metric is binary, so the main comparison uses a two-proportion z-test.
-- The effect is reported in both absolute and relative terms.
-- A 95% confidence interval is shown, rather than relying on the p-value alone.
-- Statistical significance is separated from practical significance.
-- The 0.50 pp MDE is treated as an explicit scenario assumption, not an industry rule.
-- The observed design is assessed through MDE sensitivity, avoiding misleading “observed power.”
-- The exposure-frequency analysis is explicitly labeled non-causal.
-- SQL checks cover duplicates, missing values, domains, ranges, group allocation, and outcome counts.
+### 1. Data validation in SQL
 
-## Experiment-design scenario
+I performed the initial checks in SQLite using DBeaver. The SQL scripts cover:
 
-Notebook 01 asks how a **future balanced experiment** could be planned using the observed PSA conversion rate as a baseline proxy. With:
+- row counts and unique users;
+- duplicate user IDs;
+- missing values;
+- valid experiment groups and Boolean outcomes;
+- ranges for exposure count, weekday, and hour;
+- group sizes, conversion counts, and traffic allocation;
+- basic exposure statistics by group.
 
-- control conversion rate: ~1.79%;
-- absolute MDE: 0.50 pp;
-- two-sided alpha: 0.05;
+### 2. Experiment-design scenario
+
+I used the observed PSA conversion rate as a baseline proxy for planning a future balanced experiment. The scenario assumes:
+
+- baseline conversion rate: approximately 1.79%;
+- absolute MDE: 0.50 percentage points;
+- significance level: 0.05;
 - target power: 80%;
-- 1:1 allocation;
+- allocation: 1:1.
 
-approximately **12,474 users per group** are required. Monte Carlo simulation independently validates the analytical calculation.
+Under these assumptions, the required sample size is approximately **12,474 users per group**. I then performed a Monte Carlo simulation to check whether the analytical power calculation produced a similar result.
 
-The 0.50 pp threshold implies roughly a **28% relative uplift** at this baseline. It should therefore be replaced by an economics-based threshold when revenue and cost data are available.
+The 0.50 pp MDE is a scenario assumption, not a universal business threshold. At the observed baseline, it represents an uplift of roughly 28%. In a real business setting, I would derive this threshold from conversion value, margin, advertising cost, traffic volume, and the cost of delaying a decision.
 
 ![Power curve](visuals/power_curve.png)
 
-## Exploratory exposure analysis
+### 3. Analysis of the observed experiment
 
-Within the `ad` group, conversion is positively associated with the recorded number of ad exposures. This is **not causal evidence**: exposure frequency was not randomized and may reflect targeting, engagement, time at risk, delivery rules, or conversion-related stopping.
+Because conversion is a binary outcome, I used a two-proportion z-test to compare the groups. I reported both the absolute and relative uplift, together with a 95% confidence interval for the absolute difference.
+
+I also estimated the smallest uplift that the observed, highly unequal allocation could detect with 80% power. This is more useful than calculating observed power from the effect already present in the data.
+
+### 4. Exposure-frequency analysis
+
+I explored the relationship between the recorded number of ad exposures and conversion within the ad group. Users with more recorded exposures converted more often, but I did not treat this as a causal result.
+
+Exposure frequency was not randomized and may be related to targeting, engagement, time at risk, campaign-delivery rules, or stopping ads after conversion. A causal frequency analysis would require a different experiment, such as random assignment to frequency caps.
 
 ![Exposure association](visuals/exposure_conversion_association.png)
+
+## Dataset
+
+The analysis uses the [Marketing A/B Testing dataset](https://www.kaggle.com/datasets/faviovaz/marketing-ab-testing) published on Kaggle.
+
+The main columns are:
+
+| Column | Description |
+|---|---|
+| `user id` | Unique user identifier |
+| `test group` | `ad` or `psa` experiment group |
+| `converted` | Whether the user converted |
+| `total ads` | Recorded number of exposures |
+| `most ads day` | Day with the highest number of exposures |
+| `most ads hour` | Hour with the highest number of exposures |
 
 ## Repository structure
 
@@ -98,39 +130,45 @@ ab_test_project/
 
 ### `01_monte_carlo_design.ipynb`
 
-- defines alpha, power, and a scenario MDE;
-- estimates the required balanced sample size;
-- validates power with an efficient binomial Monte Carlo simulation;
-- explains fixed-horizon testing and peeking risk;
-- saves the power curve.
+I used this notebook to:
+
+- define the experiment-design assumptions;
+- calculate the required sample size;
+- validate the expected power with Monte Carlo simulation;
+- show the relationship between sample size and power;
+- describe the risk of repeatedly checking a fixed-horizon experiment.
 
 ### `02_real_data_analysis.ipynb`
 
-- validates the dataset and boolean encoding;
-- calculates group-level conversion metrics;
-- runs the primary two-proportion test;
-- estimates a Newcombe confidence interval for the absolute uplift;
-- performs MDE sensitivity analysis at the observed allocation;
-- translates the effect into incremental conversions under explicit traffic scenarios;
-- gives a conditional business recommendation;
-- saves the primary result charts.
+I used this notebook to:
+
+- load and validate the dataset;
+- calculate group-level conversion metrics;
+- run the two-proportion z-test;
+- estimate the confidence interval for the absolute uplift;
+- calculate the detectable MDE for the observed allocation;
+- translate the estimated effect into incremental conversions under explicit traffic scenarios;
+- produce the main result charts.
 
 ### `03_dose_response.ipynb`
 
-- explores exposure buckets within the ad group;
-- reports point-biserial correlation as an association measure;
-- documents targeting, reverse-causality, and post-treatment-bias risks;
-- saves the exposure-association chart.
+I used this notebook to:
 
-## Reproducing the analysis
+- group users by exposure count;
+- compare conversion rates across exposure buckets;
+- calculate a point-biserial correlation as an association measure;
+- explain why the result should not be interpreted causally;
+- produce the exposure-association chart.
 
-From the repository root:
+## Running the project
+
+From the repository root, create a virtual environment:
 
 ```bash
 python -m venv .venv
 ```
 
-Activate the environment:
+Activate it:
 
 ```bash
 # Windows PowerShell
@@ -140,7 +178,7 @@ Activate the environment:
 source .venv/bin/activate
 ```
 
-Install dependencies and start JupyterLab:
+Install the dependencies and start JupyterLab:
 
 ```bash
 python -m pip install --upgrade pip
@@ -148,26 +186,30 @@ pip install -r requirements.txt
 jupyter lab
 ```
 
-Run the notebooks in numerical order. They locate the repository root automatically, so they work whether JupyterLab starts in the root directory or in `notebooks/`.
+Run the notebooks in numerical order. The notebooks locate the repository root automatically, so they can be opened from either the root directory or the `notebooks/` directory.
 
-## SQL assumptions
+## SQL setup
 
-The SQL files use **SQLite syntax** and are intended to be run in DBeaver against the local `marketing.db` database. They assume:
+The SQL scripts use **SQLite syntax** and were run in DBeaver against a local `marketing.db` database.
+
+They assume that:
 
 - the imported table is named `marketing_AB`;
-- `converted` is stored as a SQLite Boolean-like value (`0`/`1`) or equivalent text such as `True`/`False`;
-- source column names with spaces were preserved and therefore require double quotes;
-- the SQLite version supports window functions, which are used to calculate the median exposure count without PostgreSQL's `PERCENTILE_CONT`.
+- `converted` is stored as `0`/`1` or an equivalent Boolean text value;
+- the original column names with spaces were preserved;
+- the installed SQLite version supports window functions.
+
+SQLite does not provide PostgreSQL's `PERCENTILE_CONT`, so I calculated the median exposure count with `ROW_NUMBER()` and `COUNT()` window functions.
 
 ## Limitations
 
-- The file does not prove that assignment was randomized.
-- There are no dates, so duration, seasonality, and time trends cannot be assessed.
-- There is no revenue, margin, ad cost, or conversion-quality information.
-- The group allocation is highly uneven.
+- The CSV does not confirm that assignment to `ad` and `psa` was randomized.
+- The dataset has no dates, so I could not assess test duration, seasonality, or changes over time.
+- Revenue, margin, ad cost, and conversion-quality data are not available.
+- The group allocation is highly uneven, with about 96% of users in the ad group.
 - The exposure-frequency analysis is observational and uses a post-assignment variable.
-- Results may not generalize beyond the represented users, campaign setup, and time window.
+- The results may not generalize beyond the users, campaign setup, and time period represented in the dataset.
 
-## Skills demonstrated
+## Tools
 
-`SQL` · `Python` · `pandas` · `statsmodels` · `SciPy` · `data validation` · `A/B testing` · `power analysis` · `Monte Carlo simulation` · `confidence intervals` · `business communication` · `causal-inference awareness`
+`SQLite` · `DBeaver` · `Python` · `Jupyter` · `pandas` · `NumPy` · `SciPy` · `statsmodels` · `Matplotlib`
