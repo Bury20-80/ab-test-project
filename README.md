@@ -170,7 +170,19 @@ jupyter lab
 
 Run the notebooks in numerical order.
 
+### SQL setup
+
 The SQL scripts use **SQLite syntax** and were run in DBeaver against a local `marketing.db` database.
+
+To reproduce the SQL part of the project:
+
+1. Create or open a SQLite database named `marketing.db` in DBeaver.
+2. Import `data/raw/marketing_AB.csv` as a table named `marketing_AB`, preserving the original column names.
+3. Run `sql/validation.sql` first and confirm that the duplicate, missing-value, domain, and range checks pass.
+4. Run `sql/aggregate_groups.sql` to calculate group sizes, conversion counts, conversion rates, and traffic allocation.
+5. Compare the SQL group-level results with `notebooks/02_real_data_analysis.ipynb`.
+
+`aggregate_groups.sql` is deliberately gated: if unsupported experiment-group or conversion values are present, it returns no group metrics instead of silently treating invalid values as valid observations.
 
 ## Limitations
 
